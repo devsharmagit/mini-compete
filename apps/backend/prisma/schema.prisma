@@ -1,0 +1,146 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PARTICIPANT
+  ORGANIZER
+}
+
+enum RegistrationStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String   // Hashed password
+  role      Role
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  competitions Competition[]  @relation("OrganizerCompetitions")
+  registrations Registration[]
+  mailbox      MailBox[]
+
+  @@index([email])
+  @@map("users")
+}
+
+model Competition {
+  id           String   @id @default(uuid())
+  title        String
+  description  String
+  tags         String[] // Array of strings for tags
+  capacity     Int      // Total seats available
+  regDeadline  DateTime // Registration deadline
+  startDate    DateTime? // When competition starts (for reminders)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  // Foreign keys
+  organizerId  String
+  organizer    User     @relation("OrganizerCompetitions", fields: [organizerId], references: [id], onDelete: Cascade)
+
+  // Relations
+  registrations Registration[]
+
+  @@index([organizerId])
+  @@index([regDeadline])
+  @@index([startDate])
+  @@map("competitions")
+}
+
+model Registration {
+  id              String             @id @default(uuid())
+  status          RegistrationStatus @default(PENDING)
+  registeredAt    DateTime           @default(now())
+  confirmedAt     DateTime?
+  cancelledAt     DateTime?
+  
+  // Idempotency tracking
+  idempotencyKey  String?            @unique
+  
+  // Soft delete support
+  deletedAt       DateTime?
+  
+  // Foreign keys
+  userId          String
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  competitionId   String
+  competition     Competition        @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, competitionId]) // Prevent duplicate registrations
+  @@index([userId])
+  @@index([competitionId])
+  @@index([status])
+  @@index([idempotencyKey])
+  @@index([deletedAt])
+  @@map("registrations")
+}
+
+model MailBox {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  to        String   // Email address
+  subject   String
+  body      String   @db.Text
+  sentAt    DateTime @default(now())
+  
+  // Optional: track mail type for filtering
+  mailType  String?  // e.g., "confirmation", "reminder"
+  
+  // Optional: reference to registration if applicable
+  registrationId String?
+
+  @@index([userId])
+  @@index([sentAt])
+  @@map("mailbox")
+}
+
+model FailedJob {
+  id           String   @id @default(uuid())
+  jobName      String   // e.g., "registration:confirmation"
+  payload      Json     // Store the job payload
+  error        String   @db.Text
+  attempts     Int      @default(0)
+  failedAt     DateTime @default(now())
+  lastAttempt  DateTime @default(now())
+  
+  @@index([jobName])
+  @@index([failedAt])
+  @@map("failed_jobs")
+}
+
+// Optional: Track idempotency keys separately for better management
+model IdempotencyRecord {
+  id             String   @id @default(uuid())
+  idempotencyKey String   @unique
+  endpoint       String   // e.g., "/api/competitions/:id/register"
+  userId         String
+  requestHash    String?  // Optional: hash of request body
+  response       Json?    // Store the response that was sent
+  createdAt      DateTime @default(now())
+  expiresAt      DateTime // Auto-expire old records
+
+  @@index([idempotencyKey])
+  @@index([expiresAt])
+  @@map("idempotency_records")
+}
