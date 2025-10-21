@@ -21,5 +21,9 @@
   "workspaces": [
     "apps/*",
     "packages/*"
-  ]
+  ],
+
+"nohoist": [
+      "**/@nestjs/**"
+    ]
 }

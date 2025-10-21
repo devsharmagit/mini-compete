@@ -18,46 +18,35 @@ enum Role {
   ORGANIZER
 }
 
-enum RegistrationStatus {
-  PENDING
-  CONFIRMED
-  CANCELLED
-}
-
 model User {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  password  String   // Hashed password
-  role      Role
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  competitions Competition[]  @relation("OrganizerCompetitions")
+  id            Int            @id @default(autoincrement())
+  name          String
+  email         String         @unique
+  password      String
+  role          Role           @default(PARTICIPANT)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  
+  competitions  Competition[]  @relation("OrganizedCompetitions")
   registrations Registration[]
-  mailbox      MailBox[]
+  mailbox       MailBox[]
 
-  @@index([email])
   @@map("users")
 }
 
 model Competition {
-  id           String   @id @default(uuid())
-  title        String
-  description  String
-  tags         String[] // Array of strings for tags
-  capacity     Int      // Total seats available
-  regDeadline  DateTime // Registration deadline
-  startDate    DateTime? // When competition starts (for reminders)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id            Int            @id @default(autoincrement())
+  title         String
+  description   String
+  tags          String[]       @default([])
+  capacity      Int
+  regDeadline   DateTime
+  startDate     DateTime?
+  organizerId   Int
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
   
-  // Foreign keys
-  organizerId  String
-  organizer    User     @relation("OrganizerCompetitions", fields: [organizerId], references: [id], onDelete: Cascade)
-
-  // Relations
+  organizer     User           @relation("OrganizedCompetitions", fields: [organizerId], references: [id], onDelete: Cascade)
   registrations Registration[]
 
   @@index([organizerId])
@@ -67,80 +56,60 @@ model Competition {
 }
 
 model Registration {
-  id              String             @id @default(uuid())
-  status          RegistrationStatus @default(PENDING)
-  registeredAt    DateTime           @default(now())
-  confirmedAt     DateTime?
-  cancelledAt     DateTime?
+  id            Int          @id @default(autoincrement())
+  competitionId Int
+  userId        Int
+  createdAt     DateTime     @default(now())
+  deletedAt     DateTime?
   
-  // Idempotency tracking
-  idempotencyKey  String?            @unique
-  
-  // Soft delete support
-  deletedAt       DateTime?
-  
-  // Foreign keys
-  userId          String
-  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  competitionId   String
-  competition     Competition        @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  competition   Competition  @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, competitionId]) // Prevent duplicate registrations
+  @@unique([competitionId, userId])
   @@index([userId])
   @@index([competitionId])
-  @@index([status])
-  @@index([idempotencyKey])
   @@index([deletedAt])
   @@map("registrations")
 }
 
 model MailBox {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  to        String   // Email address
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  to        String
   subject   String
-  body      String   @db.Text
+  body      String
   sentAt    DateTime @default(now())
   
-  // Optional: track mail type for filtering
-  mailType  String?  // e.g., "confirmation", "reminder"
-  
-  // Optional: reference to registration if applicable
-  registrationId String?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([sentAt])
   @@map("mailbox")
 }
 
+model IdempotencyKey {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique
+  response  Json
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
+  @@map("idempotency_keys")
+}
+
 model FailedJob {
-  id           String   @id @default(uuid())
-  jobName      String   // e.g., "registration:confirmation"
-  payload      Json     // Store the job payload
-  error        String   @db.Text
-  attempts     Int      @default(0)
-  failedAt     DateTime @default(now())
-  lastAttempt  DateTime @default(now())
-  
-  @@index([jobName])
-  @@index([failedAt])
+  id         Int      @id @default(autoincrement())
+  jobId      String
+  jobName    String
+  payload    Json
+  error      String
+  stackTrace String?
+  attempts   Int
+  createdAt  DateTime @default(now())
+
+  @@index([jobId])
+  @@index([createdAt])
   @@map("failed_jobs")
 }
 
-// Optional: Track idempotency keys separately for better management
-model IdempotencyRecord {
-  id             String   @id @default(uuid())
-  idempotencyKey String   @unique
-  endpoint       String   // e.g., "/api/competitions/:id/register"
-  userId         String
-  requestHash    String?  // Optional: hash of request body
-  response       Json?    // Store the response that was sent
-  createdAt      DateTime @default(now())
-  expiresAt      DateTime // Auto-expire old records
-
-  @@index([idempotencyKey])
-  @@index([expiresAt])
-  @@map("idempotency_records")
-}
