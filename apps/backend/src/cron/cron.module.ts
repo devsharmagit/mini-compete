@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
-import { BullModule } from '@nestjs/bull';
+import { WorkerModule } from '../worker/worker.module';
 import { CronService } from './cron.service';
 import { PrismaModule } from '../prisma/prisma.module';
 
@@ -8,9 +8,7 @@ import { PrismaModule } from '../prisma/prisma.module';
   imports: [
     ScheduleModule.forRoot(),
     PrismaModule,
-    BullModule.registerQueue({
-      name: 'email',
-    }),
+    WorkerModule,
   ],
   providers: [CronService],
 })
