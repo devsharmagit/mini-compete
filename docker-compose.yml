@@ -31,48 +31,49 @@ services:
       timeout: 5s
       retries: 5
 
-  # backend:
-  #   build:
-  #     context: .
-  #     dockerfile: ./apps/backend/Dockerfile
-  #   container_name: mini-compete-backend
-  #   ports:
-  #     - '4000:4000'
-  #   environment:
-  #     - NODE_ENV=production
-  #     - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/mini_compete?schema=public
-  #     - REDIS_URL=redis://redis:6379
-  #     - JWT_SECRET=your-super-secret-jwt-key-change-in-production
-  #     - FRONTEND_URL=http://localhost:3000
-  #     - PORT=4000
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_healthy
-  #   volumes:
-  #     - ./apps/backend/prisma:/app/apps/backend/prisma
-  #   command: >
-  #     sh -c "
-  #       echo 'Waiting for database to be ready...' &&
-  #       npx prisma migrate deploy &&
-  #       npx prisma db seed &&
-  #       echo 'Starting backend server...' &&
-  #       npm run start:prod
-  #     "
+  backend:
+    build:
+      context: .
+      dockerfile: ./apps/backend/Dockerfile
+    container_name: mini-compete-backend
+    ports:
+      - '3001:3001'
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/mini_compete?schema=public
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - FRONTEND_URL=http://localhost:3000
+      - PORT=3001
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./apps/backend/prisma:/app/apps/backend/prisma
+    command: >
+      sh -c "
+        echo 'Waiting for database to be ready...' &&
+        npx prisma migrate deploy &&
+        npx prisma db seed &&
+        echo 'Starting backend server...' &&
+        npm run start:prod
+      "
 
-  # frontend:
-  #   build:
-  #     context: .
-  #     dockerfile: ./apps/frontend/Dockerfile
-  #   container_name: mini-compete-frontend
-  #   ports:
-  #     - '3000:3000'
-  #   environment:
-  #     - NODE_ENV=production
-  #     - NEXT_PUBLIC_API_URL=http://localhost:4000/api
-  #   depends_on:
-  #     - backend
+  frontend:
+    build:
+      context: .
+      dockerfile: ./apps/frontend/Dockerfile
+    container_name: mini-compete-frontend
+    ports:
+      - '3000:3000'
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://localhost:3001/api
+    depends_on:
+      - backend
 
 volumes:
   postgres_data:
