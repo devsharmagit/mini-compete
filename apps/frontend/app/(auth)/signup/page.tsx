@@ -14,7 +14,7 @@ const signupSchema = z.object({
   email: z.string().trim().email('Please enter a valid email'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   confirmPassword: z.string().min(1, 'Please confirm your password'),
-  role: z.enum(['PARTICIPANT', 'ORGANIZER'], { required_error: 'Please select a role' }),
+  role: z.enum(['PARTICIPANT', 'ORGANIZER'], { message: 'Please select a role' }),
   agreeToTerms: z.boolean().refine((val) => val === true, { message: 'You must agree to the terms' })
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'Passwords do not match',

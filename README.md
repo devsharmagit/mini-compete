@@ -1,26 +1,46 @@
-# Turborepo starter
+# Mini Compete
 
-This Turborepo starter is maintained by the Turborepo core team.
+A full-stack competition management platform built with Next.js, NestJS, PostgreSQL, and Redis.
 
-## Using this example
+## Quick Start with Docker (Recommended)
 
-Run the following command:
+The easiest way to run the entire application is using Docker:
 
-```sh
-npx create-turbo@latest
+```bash
+./start-docker.sh
 ```
+
+This single command will start:
+- Frontend (Next.js) on http://localhost:3000
+- Backend API (NestJS) on http://localhost:4000/api
+- PostgreSQL database on localhost:5432
+- Redis cache on localhost:6379
+
+For detailed Docker setup instructions, see [DOCKER_SETUP.md](./DOCKER_SETUP.md).
 
 ## What's inside?
 
-This Turborepo includes the following packages/apps:
+This monorepo includes the following packages/apps:
 
-### Apps and Packages
+### Apps
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+- `frontend`: A [Next.js](https://nextjs.org/) application for the competition management UI
+- `backend`: A [NestJS](https://nestjs.com/) API server with PostgreSQL and Redis integration
+
+### Packages
+
+- `@repo/ui`: Shared React component library
+- `@repo/eslint-config`: ESLint configurations
+- `@repo/typescript-config`: TypeScript configurations
+
+### Tech Stack
+
+- **Frontend**: Next.js 15, React 19, Tailwind CSS, TypeScript
+- **Backend**: NestJS, Prisma ORM, PostgreSQL, Redis, Bull Queue
+- **Database**: PostgreSQL with Prisma migrations
+- **Cache**: Redis for sessions and job queues
+- **Authentication**: JWT-based authentication
+- **Deployment**: Docker & Docker Compose
 
 Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
 
@@ -60,32 +80,46 @@ yarn exec turbo build --filter=docs
 pnpm exec turbo build --filter=docs
 ```
 
-### Develop
+### Development
 
-To develop all apps and packages, run the following command:
+#### Option 1: Docker Development (Recommended)
+```bash
+# Start database and Redis only
+docker-compose up postgres redis -d
 
+# Run backend in development mode
+cd apps/backend
+npm run start:dev
+
+# Run frontend in development mode (in another terminal)
+cd apps/frontend
+npm run dev
 ```
-cd my-turborepo
 
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo dev
+#### Option 2: Full Local Development
+```bash
+# Install dependencies
+pnpm install
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo dev
-yarn exec turbo dev
-pnpm exec turbo dev
+# Start all services
+pnpm dev
+
+# Or start specific services
+pnpm dev --filter=backend
+pnpm dev --filter=frontend
 ```
 
-You can develop a specific package by using a [filter](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters):
+#### Database Setup
+```bash
+# Generate Prisma client
+cd apps/backend
+npx prisma generate
 
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo dev --filter=web
+# Run migrations
+npx prisma migrate dev
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo dev --filter=web
-yarn exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
+# Seed the database
+npx prisma db seed
 ```
 
 ### Remote Caching
