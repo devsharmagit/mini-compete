@@ -6,12 +6,15 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
+import { useAuth } from '../../../contexts/AuthContext';
+import { useRouter } from 'next/navigation';
 
 const signupSchema = z.object({
   name: z.string().trim().min(1, 'Name is required'),
   email: z.string().trim().email('Please enter a valid email'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   confirmPassword: z.string().min(1, 'Please confirm your password'),
+  role: z.enum(['PARTICIPANT', 'ORGANIZER'], { required_error: 'Please select a role' }),
   agreeToTerms: z.boolean().refine((val) => val === true, { message: 'You must agree to the terms' })
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'Passwords do not match',
@@ -22,6 +25,9 @@ type SignupFormValues = z.infer<typeof signupSchema>;
 
 const SignupPage = () => {
   const [showPassword, setShowPassword] = useState(false);
+  const { signup } = useAuth();
+  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
 
   const { register, handleSubmit, formState: { errors, isSubmitting }, } = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
@@ -30,12 +36,29 @@ const SignupPage = () => {
       email: '',
       password: '',
       confirmPassword: '',
+      role: 'PARTICIPANT',
       agreeToTerms: false
     }
   });
 
-  const onSubmit = (data: SignupFormValues) => {
-    console.log('Signup submitted:', data);
+  const onSubmit = async (data: SignupFormValues) => {
+    try {
+      setError(null);
+      const result = await signup({
+        name: data.name,
+        email: data.email,
+        password: data.password,
+        role: data.role
+      });
+      
+      if (result.success) {
+        router.push('/dashboard');
+      } else {
+        setError(result.error || 'Signup failed');
+      }
+    } catch (error) {
+      setError('An unexpected error occurred');
+    }
   };
 
   return (
@@ -77,6 +100,12 @@ const SignupPage = () => {
             <h2 className="text-2xl font-semibold mb-6">Create Account</h2>
             
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+              {error && (
+                <div className="p-4 bg-red-500/20 border border-red-500/30 rounded-lg">
+                  <p className="text-red-300 text-sm">{error}</p>
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-white/80 mb-2">Name</label>
                 <input
@@ -100,6 +129,20 @@ const SignupPage = () => {
                 />
                 {errors.email && (
                   <p className="text-red-200 text-sm mt-1">{errors.email.message}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-white/80 mb-2">Role</label>
+                <select
+                  {...register('role')}
+                  className={`w-full px-4 py-3 bg-white/10 text-white border ${errors.role ? 'border-red-400' : 'border-white/20'} rounded-lg focus:ring-2 focus:ring-white/20 focus:border-white/40 outline-none transition`}
+                >
+                  <option value="PARTICIPANT" className="bg-gray-800">Participant - Join competitions</option>
+                  <option value="ORGANIZER" className="bg-gray-800">Organizer - Create competitions</option>
+                </select>
+                {errors.role && (
+                  <p className="text-red-200 text-sm mt-1">{errors.role.message}</p>
                 )}
               </div>
 

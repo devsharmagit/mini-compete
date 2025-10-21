@@ -5,6 +5,8 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import Link from 'next/link'
+import { useAuth } from '../../../contexts/AuthContext'
+import { useRouter } from 'next/navigation'
 
 const loginSchema = z.object({
   email: z.string().trim().email('Please enter a valid email'),
@@ -22,8 +24,23 @@ const Page = () => {
     defaultValues: { email: '', password: '' }
   })
 
-  const onSubmit = (values: LoginFormValues) => {
-    console.log('Login submitted:', values)
+  const { login } = useAuth()
+  const router = useRouter()
+  const [error, setError] = useState<string | null>(null)
+
+  const onSubmit = async (values: LoginFormValues) => {
+    try {
+      setError(null)
+      const result = await login(values.email, values.password)
+      
+      if (result.success) {
+        router.push('/dashboard')
+      } else {
+        setError(result.error || 'Login failed')
+      }
+    } catch (error) {
+      setError('An unexpected error occurred')
+    }
   }
     
   return (
@@ -65,6 +82,12 @@ const Page = () => {
             <h2 className="text-2xl font-semibold mb-6">Login</h2>
             
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+              {error && (
+                <div className="p-4 bg-red-500/20 border border-red-500/30 rounded-lg">
+                  <p className="text-red-300 text-sm">{error}</p>
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-white/80 mb-2">Email</label>
                 <input
